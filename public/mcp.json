@@ -1,0 +1,143 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/2025-06-18/server.json",
+  "name": "io.github.aniruddhaadak80/swellread",
+  "description": "Read the water before you paddle out. Swellread turns real swell, wind and verified NOAA tide predictions into one explainable, sealed verdict per surf break, and exposes that as MCP tools including mutating ones.",
+  "version": "1.0.0",
+  "websiteUrl": "https://swellread.vercel.app",
+  "repository": {
+    "url": "https://github.com/aniruddhaadak80/swellread",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "canonical",
+      "registryBaseUrl": "https://registry.modelcontextprotocol.io",
+      "identifier": "io.github.aniruddhaadak80/swellread",
+      "version": "1.0.0",
+      "transport": {
+        "type": "streamable-http",
+        "url": "https://swellread.vercel.app/api/mcp"
+      }
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://swellread.vercel.app/api/mcp",
+      "headers": []
+    }
+  ],
+  "tools": [
+    {
+      "name": "list_breaks",
+      "description": "Returns the curated catalogue: coordinates, break type, peel orientation, reef slope, take-off depth, and whether a NOAA tide station is in range.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_conditions",
+      "description": "Normalised hourly slice for a break's local day from NOAA CO-OPS tide predictions and Open-Meteo, with attribution and an honest live/fallback status.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "breakId": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "date": { "type": "string", "description": "Local calendar date, YYYY-MM-DD" },
+          "hour": { "type": "integer", "minimum": 0, "maximum": 23 }
+        },
+        "required": ["breakId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "analyse_break",
+      "description": "Runs the deterministic engine on one hour and returns the score, band, every factor with its weight and arithmetic, gates, derived physics, the day's window and the SHA-384 seal.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "breakId": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "date": { "type": "string" },
+          "hour": { "type": "integer", "minimum": 0, "maximum": 23 },
+          "tideM": { "type": "number", "minimum": -1, "maximum": 8 }
+        },
+        "required": ["breakId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "create_session",
+      "description": "Freezes a real conditions snapshot and an engine verdict into a new session and appends the first sealed audit event. Idempotent on idempotencyKey.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "breakId": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "plannedFor": { "type": "string" },
+          "status": { "type": "string", "enum": ["planned", "committed", "skipped", "ridden"] },
+          "note": { "type": "string", "maxLength": 600 },
+          "idempotencyKey": { "type": "string", "maxLength": 120 }
+        },
+        "required": ["breakId", "plannedFor"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "decide_session",
+      "description": "Records an in/out call and confidence on a session and appends a sealed audit event.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": { "type": "string", "format": "uuid" },
+          "call": { "type": "string", "enum": ["in", "out"] },
+          "confidence": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "status": { "type": "string", "enum": ["planned", "committed", "skipped", "ridden"] },
+          "note": { "type": "string", "maxLength": 600 }
+        },
+        "required": ["sessionId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "log_ride",
+      "description": "Records a ride from the WebGL wave lab against a session, through the same write path the UI uses.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": { "type": "string", "format": "uuid" },
+          "durationSec": { "type": "integer", "minimum": 0, "maximum": 86400 },
+          "longestRideSec": { "type": "integer", "minimum": 0, "maximum": 86400 },
+          "topSpeedKmh": { "type": "number", "minimum": 0, "maximum": 250 },
+          "completed": { "type": "boolean" }
+        },
+        "required": ["sessionId", "durationSec", "longestRideSec", "topSpeedKmh", "completed"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "delete_session",
+      "description": "Soft-deletes a session, keeping a tombstone and its audit chain so the history stays replayable.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": { "type": "string", "format": "uuid" }
+        },
+        "required": ["sessionId"],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "verify_integrity",
+      "description": "Recomputes every SHA-384 seal in a session's chain from the genesis value and reports the first broken link.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "sessionId": { "type": "string", "format": "uuid" }
+        },
+        "required": ["sessionId"],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

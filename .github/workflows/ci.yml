@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit and integration tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+        env:
+          # The app refuses to start in production without a database. The build
+          # itself does not need one, so point it at the embedded adapter.
+          SWELLREAD_ALLOW_LOCAL_STORE: "1"
+
+      - name: Upload the built output
+        uses: actions/upload-artifact@v4
+        with:
+          name: swellread-next
+          path: .next
+          retention-days: 3
+          if-no-files-found: error

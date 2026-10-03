@@ -1,0 +1,66 @@
+/** Schema DDL. Every statement is idempotent so first run needs no migration step. */
+
+export const SCHEMA_STATEMENTS: string[] = [
+  `create table if not exists breaks (
+     id text primary key,
+     name text not null,
+     region text not null,
+     country text not null,
+     lat double precision not null,
+     lon double precision not null,
+     timezone text not null,
+     break_type text not null,
+     orientation_deg double precision not null,
+     reef_slope double precision not null,
+     depth_at_break_m double precision not null,
+     tide_station_id text,
+     tide_station_name text,
+     tide_station_distance_km double precision,
+     blurb text not null,
+     created_at timestamptz not null default now()
+   )`,
+  `create table if not exists sessions (
+     id uuid primary key default gen_random_uuid(),
+     owner_id text not null,
+     break_id text not null references breaks(id) on delete restrict,
+     status text not null check (status in ('planned','committed','skipped','ridden')),
+     planned_for timestamptz not null,
+     call text check (call in ('in','out')),
+     confidence integer check (confidence between 1 and 5),
+     note text,
+     embedding text,
+     conditions jsonb not null,
+     engine jsonb not null,
+     version integer not null default 1,
+     deleted_at timestamptz,
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   )`,
+  `create table if not exists rides (
+     id uuid primary key default gen_random_uuid(),
+     owner_id text not null,
+     session_id uuid not null references sessions(id) on delete cascade,
+     duration_sec integer not null check (duration_sec >= 0),
+     longest_ride_sec integer not null check (longest_ride_sec >= 0),
+     top_speed_kmh real not null check (top_speed_kmh >= 0),
+     completed boolean not null,
+     created_at timestamptz not null default now()
+   )`,
+  `create table if not exists audit_events (
+     entity_type text not null,
+     entity_id text not null,
+     seq integer not null,
+     action text not null,
+     owner_id text not null,
+     payload jsonb not null,
+     prev_seal text not null,
+     seal text not null,
+     created_at timestamptz not null default now(),
+     primary key (entity_type, entity_id, seq)
+   )`,
+  `create index if not exists sessions_owner_created_idx on sessions (owner_id, created_at desc)`,
+  `create index if not exists sessions_owner_status_idx on sessions (owner_id, status) where deleted_at is null`,
+  `create index if not exists sessions_owner_break_idx on sessions (owner_id, break_id)`,
+  `create index if not exists rides_session_idx on rides (session_id, created_at desc)`,
+  `create index if not exists audit_owner_idx on audit_events (owner_id, entity_id, seq)`,
+];

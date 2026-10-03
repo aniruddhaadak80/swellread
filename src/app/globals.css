@@ -1,26 +1,123 @@
 @import "tailwindcss";
 
+/*
+  Identity: "reef-glass midday" — a sun-bleached, high-key daylight palette with
+  the horizontal tide ribbon as the spine of every page, because the product is a
+  timeline. Deliberately unlike the near-black and bone-paper instrument grounds of
+  the previous few builds in this account: bright sea-glass, lagoon teal, deep
+  petrol ink, and a single rescue-orange that means "act on this".
+*/
+@theme {
+  --color-glass: #eef2f0;
+  --color-glass-deep: #dfe7e4;
+  --color-paper: #ffffff;
+  --color-ink: #0a2f36;
+  --color-ink-soft: #3d5c63;
+  --color-ink-faint: #6b868c;
+  --color-lagoon: #0d9488;
+  --color-lagoon-deep: #0f766e;
+  --color-lagoon-wash: #d5efec;
+  --color-abyss: #164e63;
+  --color-abyss-deep: #0b3a4a;
+  --color-rescue: #c2410c;
+  --color-rescue-bright: #f2560c;
+  --color-alert: #be123c;
+  --color-rule: #c3d2ce;
+
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-chivo-mono), ui-monospace, SFMono-Regular, monospace;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-glass);
+  color: var(--color-ink);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Section rhythm: full-width horizontal bands separated by hard rules, never
+   floating rounded cards. This is the layout signature. */
+.band {
+  border-top: 1px solid var(--color-rule);
+}
+
+.band:first-of-type {
+  border-top: 0;
+}
+
+.label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+.data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 0.94;
+}
+
+/* Focus must be obvious on a light, low-contrast ground. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-rescue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.rule-ticks {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-rule) 0 1px,
+    transparent 1px 100%
+  );
+  background-size: 8px 100%;
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-rule) transparent;
+}
+
+@keyframes swell-set {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: none; }
+}
+
+.set-in {
+  animation: swell-set 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .set-in { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+input[type="range"] {
+  accent-color: var(--color-rescue);
+}
+
+canvas {
+  display: block;
+  touch-action: none;
 }

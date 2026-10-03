@@ -1,27 +1,44 @@
 {
-  "name": "swellread",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "next": "15.5.4"
-  },
-  "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
-    "eslint": "^9",
-    "eslint-config-next": "15.5.4",
-    "@eslint/eslintrc": "^3"
-  }
+    "name": "swellread",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "eslint",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "verify": "node scripts/verify-live.mjs",
+        "check": "npm run typecheck && npm run lint && npm run test"
+    },
+    "dependencies": {
+        "@electric-sql/pglite": "^0.5.8",
+        "@huggingface/transformers": "^4.3.0",
+        "@neondatabase/serverless": "^1.2.0",
+        "framer-motion": "^14.0.0",
+        "lucide-react": "^1.51.0",
+        "next": "15.5.4",
+        "react": "19.1.0",
+        "react-dom": "19.1.0",
+        "three": "^0.186.1",
+        "zod": "^4.6.5"
+    },
+    "devDependencies": {
+        "@eslint/eslintrc": "^3",
+        "@tailwindcss/postcss": "^4",
+        "@types/node": "^22.20.5",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "@types/three": "^0.186.0",
+        "eslint": "^9",
+        "eslint-config-next": "15.5.4",
+        "playwright": "^1.63.0",
+        "tailwindcss": "^4",
+        "tsx": "^4.23.15",
+        "typescript": "^5",
+        "vitest": "^5.0.3"
+    },
+    "description": "Read the water before you paddle out. Real swell, wind and verified tide turned into one explainable verdict per break."
 }
