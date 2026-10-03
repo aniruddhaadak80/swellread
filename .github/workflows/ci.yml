@@ -47,3 +47,5 @@ jobs:
           path: .next
           retention-days: 3
           if-no-files-found: error
+          # .next is a dot-directory and is excluded by default.
+          include-hidden-files: true

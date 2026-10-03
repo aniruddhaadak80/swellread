@@ -42,3 +42,5 @@ Thumbs.db
 # test output
 coverage
 screenshots/*.tmp.png
+.vercel
+.env*
