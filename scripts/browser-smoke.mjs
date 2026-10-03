@@ -48,8 +48,9 @@ async function waitForText(page, locator, pattern, label, timeoutMs = 30_000) {
 async function runCall(page, label) {
   await page.locator("button", { hasText: new RegExp(`^${label.replace("/", "\\/")}$`) }).first().click();
   const summary = page.locator("summary", { hasText: label }).first();
-  await summary.waitFor({ state: "attached", timeout: 15_000 });
-  const deadline = Date.now() + 30_000;
+  // Generous, because a serverless cold start can take a while to answer.
+  await summary.waitFor({ state: "attached", timeout: 60_000 });
+  const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
     const text = await summary.innerText();
     if (/HTTP 200/.test(text)) return text;
