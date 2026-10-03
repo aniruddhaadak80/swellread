@@ -27,16 +27,25 @@ interface NeonExecutor extends SqlExecutor {
   kind: "neon";
 }
 
+/**
+ * Tests get an in-memory database. PGlite is single-connection, and vitest runs
+ * test files in parallel processes, so two files sharing one directory on disk
+ * collide. A memory store also removes the ordering dependence entirely.
+ */
+function isEphemeral(): boolean {
+  return Boolean(process.env.VITEST) || process.env.SWELLREAD_STORE === "memory";
+}
+
 function pgliteExecutor(): PgliteExecutor {
-  // PGlite needs an explicit Node filesystem to persist to a directory. Without it
-  // the bundled browser build is selected, which hands a URL to a path helper and
-  // throws at first use.
   let db: PGlite;
-  try {
+  if (isEphemeral()) {
+    db = new PGlite();
+  } else {
+    // An explicit Node filesystem is required to persist to a directory. Without
+    // it the bundled browser build is selected, which hands a URL to a node:path
+    // helper and throws on first use.
     mkdirSync(LOCAL_STORE_DIR, { recursive: true });
     db = new PGlite({ dataDir: LOCAL_STORE_DIR, fs: new NodeFS(LOCAL_STORE_DIR) });
-  } catch {
-    db = new PGlite();
   }
   return {
     kind: "pglite",
