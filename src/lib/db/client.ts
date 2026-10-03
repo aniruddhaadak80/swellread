@@ -31,14 +31,20 @@ interface NeonExecutor extends SqlExecutor {
  * Tests get an in-memory database. PGlite is single-connection, and vitest runs
  * test files in parallel processes, so two files sharing one directory on disk
  * collide. A memory store also removes the ordering dependence entirely.
+ *
+ * `SWELLREAD_STORE=file` forces the on-disk path even under tests, which is how
+ * the persistent adapter gets exercised without two processes sharing it.
  */
-function isEphemeral(): boolean {
-  return Boolean(process.env.VITEST) || process.env.SWELLREAD_STORE === "memory";
+export function storeMode(): "memory" | "file" {
+  const forced = process.env.SWELLREAD_STORE;
+  if (forced === "file") return "file";
+  if (forced === "memory") return "memory";
+  return process.env.VITEST ? "memory" : "file";
 }
 
 function pgliteExecutor(): PgliteExecutor {
   let db: PGlite;
-  if (isEphemeral()) {
+  if (storeMode() === "memory") {
     db = new PGlite();
   } else {
     // An explicit Node filesystem is required to persist to a directory. Without
@@ -61,20 +67,26 @@ function pgliteExecutor(): PgliteExecutor {
 }
 
 function neonExecutor(databaseUrl: string): NeonExecutor {
-  // The driver only exposes a tagged-template signature, so it is retyped here as
-  // a plain call: `query` and `exec` below are the only callers, and both build
-  // their own strings array with the exact values they passed in.
-  const sql = neon(databaseUrl) as unknown as (...args: unknown[]) => Promise<unknown>;
+  const sql = neon(databaseUrl);
+
+  // `sql.query(text, params)` is the driver's documented entry point for a raw
+  // statement with `$1`-style placeholders. The tagged-template form is only for
+  // literal queries: its own interpolation pass rewrites the statement and drops
+  // or merges placeholders, which silently corrupts every parameterised statement
+  // in the repository. Every query here is built as text with placeholders, so it
+  // must go through `query()`.
+  async function run(statement: string, params: unknown[]): Promise<unknown[]> {
+    const rows = params.length > 0 ? await sql.query(statement, params) : await sql.query(statement);
+    return Array.isArray(rows) ? (rows as unknown[]) : [];
+  }
+
   return {
     kind: "neon",
     async query<T>(statement: string, params: unknown[] = []): Promise<T[]> {
-      const strings = Object.assign([statement], { raw: [statement] }) as unknown as TemplateStringsArray;
-      const rows = (await sql(strings, ...params)) as T[];
-      return Array.isArray(rows) ? rows : [];
+      return (await run(statement, params)) as T[];
     },
     async exec(statement: string): Promise<void> {
-      const strings = Object.assign([statement], { raw: [statement] }) as unknown as TemplateStringsArray;
-      await sql(strings);
+      await run(statement, []);
     },
   };
 }
@@ -92,9 +104,25 @@ declare global {
 async function initialise(executor: SqlExecutor): Promise<void> {
   const { SCHEMA_STATEMENTS } = await import("@/lib/db/schema");
   for (const statement of SCHEMA_STATEMENTS) {
-    await executor.exec(statement);
+    try {
+      await executor.exec(statement);
+    } catch (error) {
+      // Name the failing statement. This only ever reaches the server log or the
+      // health probe, never a stack trace to a client.
+      throw new Error(
+        `schema statement failed [${statement.slice(0, 90).replace(/\s+/g, " ")}]: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
-  await import("@/lib/db/seed").then((module) => module.seedBreaks(executor));
+  try {
+    await import("@/lib/db/seed").then((module) => module.seedBreaks(executor));
+  } catch (error) {
+    throw new Error(
+      `seeding failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 export async function getDb(): Promise<Pooled> {

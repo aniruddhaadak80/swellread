@@ -32,6 +32,18 @@ function ok(name, detail = "") {
   console.log(`PASS  ${String(step).padStart(2, "0")}. ${name}${detail ? ` — ${detail}` : ""}`);
 }
 
+/** Polls until the predicate holds, or throws with the last observed text. */
+async function waitForText(page, locator, pattern, label, timeoutMs = 30_000) {
+  const deadline = Date.now() + timeoutMs;
+  let last = "";
+  while (Date.now() < deadline) {
+    last = (await locator.count()) > 0 ? await locator.first().innerText() : "";
+    if (pattern.test(last)) return last;
+    await page.waitForTimeout(300);
+  }
+  throw new Error(`${label} never appeared. Last seen: ${last.replace(/\s+/g, " ").slice(0, 200)}`);
+}
+
 /** Clicks a console preset and waits for that call's own summary to report 200. */
 async function runCall(page, label) {
   await page.locator("button", { hasText: new RegExp(`^${label.replace("/", "\\/")}$`) }).first().click();
@@ -131,16 +143,15 @@ async function main() {
 
   // 5 — record a call, which must bump the version and append a sealed event
   await page.locator("button", { hasText: "I'm going" }).first().click();
-  await page.waitForTimeout(1500);
-  const eventsAfterDecision = await page.locator("ol li", { hasText: "session.decide" }).count();
-  if (eventsAfterDecision === 0) throw new Error("deciding did not append a session.decide audit event");
+  const decideEvent = await waitForText(page, page.locator("ol li", { hasText: /session\.decide/i }), /session\.decide/i, "the session.decide audit event");
+  ok("recording a call appended a sealed audit event", decideEvent.replace(/\s+/g, " ").slice(0, 60));
 
   // 6 — write a note
   await page.fill("#session-note", "smoked in a real browser, mid tide peeled hard left");
   await page.locator("button", { hasText: "Save note" }).first().click();
-  await page.waitForTimeout(1500);
+  await waitForText(page, page.locator("ol li", { hasText: /session\.update/i }), /session\.update/i, "the session.update audit event");
   await shot(page, "04-session-decided");
-  ok("recording a call and a note appended sealed audit events", `${eventsAfterDecision} decide event(s)`);
+  ok("the note was persisted and appended its own audit event", "session.update");
 
   // 7 — export the brief
   await page.goto(`${BASE}/export?session=${sessionId}`, { waitUntil: "domcontentloaded", timeout: 45_000 });
