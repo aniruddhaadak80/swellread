@@ -44,3 +44,7 @@ coverage
 screenshots/*.tmp.png
 .vercel
 .env*
+
+# Vercel marketplace agent skills injected by integrations
+.agents/
+skills-lock.json
